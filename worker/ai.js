@@ -17,22 +17,34 @@ ${KB.never.map((r) => `- ${r}`).join('\n')}
 KNOWLEDGE BASE (sample data):
 ${KB_JSON}`;
 
+const anthropicHeaders = (env) => ({
+  'x-api-key': env.ANTHROPIC_API_KEY.trim(),
+  'anthropic-version': '2023-06-01',
+  'content-type': 'application/json',
+});
+
+let resolvedModel = null;
+// Use ANTHROPIC_MODEL if set and valid; otherwise pick the newest Sonnet model the key can access.
+export async function resolveModel(env, force = false) {
+  if (resolvedModel && !force) return resolvedModel;
+  if (env.ANTHROPIC_MODEL && !force) { resolvedModel = env.ANTHROPIC_MODEL; return resolvedModel; }
+  const res = await fetch('https://api.anthropic.com/v1/models?limit=100', { headers: anthropicHeaders(env) });
+  if (!res.ok) throw new Error(`Anthropic models ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const ids = ((await res.json()).data || []).map((m) => m.id);
+  resolvedModel = ids.find((id) => /sonnet/i.test(id)) || ids[0];
+  if (!resolvedModel) throw new Error('No models available for this key');
+  return resolvedModel;
+}
+
 async function claudeJSON(env, { system, prompt, maxTokens = 3000 }) {
   if (!env.ANTHROPIC_API_KEY) return null;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const call = async (model) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+    headers: anthropicHeaders(env),
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: prompt }] }),
   });
+  let res = await call(await resolveModel(env));
+  if (res.status === 404) res = await call(await resolveModel(env, true)); // configured model not found: fall back to newest Sonnet
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
   const text = (data.content || []).map((c) => c.text || '').join('');

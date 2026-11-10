@@ -10,7 +10,6 @@
     "run_worker_first": ["/api/*"]
   },
   "vars": {
-    "ANTHROPIC_MODEL": "claude-sonnet-4-5",
     "COORDINATOR_NAME": "the Fitler Club Events Team"
   },
   "observability": { "enabled": true }

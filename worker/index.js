@@ -1,7 +1,7 @@
 // Cloudflare Worker: JSON API for the Event Concierge prototype. Static assets (the React app)
 // are served by Workers Assets; only /api/* reaches this code.
 import { getStore } from './store.js';
-import { triage, generateGuide, checkChange, answerFaq } from './ai.js';
+import { triage, generateGuide, checkChange, answerFaq, resolveModel } from './ai.js';
 import { mockTriage } from './mock.js';
 import { checkText, checkGuide } from '../shared/guardrails.js';
 
@@ -11,6 +11,12 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 const uuid = () => crypto.randomUUID();
 const token = () => crypto.randomUUID().replace(/-/g, '').slice(0, 20);
 const typeLabel = { corporate: 'Corporate event', social: 'Social event', wedding: 'Wedding', mitzvah: 'Mitzvah' };
+
+async function faqProbe(env) {
+  const r = await answerFaq(env, 'What AV is available?', { title: 'Health check', event_type: 'corporate' });
+  if (r.engine !== 'claude') throw new Error(r.error || 'Model call fell back to template');
+  return true;
+}
 
 function isCoordinator(req, env) {
   if (!env.DEMO_PASSCODE) return true;
@@ -61,7 +67,17 @@ async function handle(req, env, url) {
   const parts = path.split('/').filter(Boolean); // ['api', ...]
 
   if (path === '/api/config') {
-    return json({ needsPasscode: !!env.DEMO_PASSCODE, store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template', model: env.ANTHROPIC_API_KEY ? (env.ANTHROPIC_MODEL || 'claude-sonnet-4-5') : null });
+    return json({ needsPasscode: !!env.DEMO_PASSCODE, store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template', model: env.ANTHROPIC_API_KEY ? (env.ANTHROPIC_MODEL || 'auto') : null });
+  }
+  if (path === '/api/health') {
+    // Coordinator-only diagnostics: checks Supabase and Claude connectivity without exposing secrets.
+    if (!isCoordinator(req, env)) return json({ error: 'Passcode required' }, 401);
+    const out = { store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template' };
+    try { out.events = (await store.listEvents()).length; out.store_ok = true; } catch (e) { out.store_ok = false; out.store_error = e.message.slice(0, 200); }
+    if (env.ANTHROPIC_API_KEY) {
+      try { out.model = await resolveModel(env); out.ai_ok = !!(await faqProbe(env)); } catch (e) { out.ai_ok = false; out.ai_error = e.message.slice(0, 200); }
+    }
+    return json(out);
   }
   if (path === '/api/login') {
     return json({ ok: !env.DEMO_PASSCODE || body.passcode === env.DEMO_PASSCODE }, !env.DEMO_PASSCODE || body.passcode === env.DEMO_PASSCODE ? 200 : 401);

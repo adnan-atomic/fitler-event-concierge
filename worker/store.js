@@ -33,13 +33,15 @@ function applySeed(target) {
 }
 
 function supaStore(env) {
-  const base = env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1';
+  const base = env.SUPABASE_URL.trim().replace(/\/$/, '') + '/rest/v1';
+  const key = env.SUPABASE_SERVICE_KEY.trim();
   const headers = {
-    apikey: env.SUPABASE_SERVICE_KEY,
-    Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+    apikey: key,
     'Content-Type': 'application/json',
     Prefer: 'return=representation',
   };
+  // Legacy service_role keys are JWTs and also go in Authorization; new sb_secret_ keys only need apikey.
+  if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
   async function q(path, init = {}) {
     const res = await fetch(base + path, { ...init, headers: { ...headers, ...(init.headers || {}) } });
     if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
