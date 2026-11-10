@@ -42,6 +42,11 @@ function Login({ onOk }) {
 }
 
 function TopBar({ config, onReset }) {
+  const [arm, setArm] = useState(false);
+  const click = () => {
+    if (!arm) { setArm(true); setTimeout(() => setArm(false), 4000); return; }
+    setArm(false); onReset();
+  };
   return (
     <header className="topbar">
       <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
@@ -55,7 +60,7 @@ function TopBar({ config, onReset }) {
           </span>
         )}
         {config && <span className="pill" title="Where data is stored">{config.store === 'supabase' ? 'Supabase' : 'In-memory'}</span>}
-        <button className="link" onClick={onReset}>Reset demo</button>
+        <button className="link" onClick={click} style={arm ? { color: '#f0c27a' } : null}>{arm ? 'Click again to reset' : 'Reset demo'}</button>
       </div>
     </header>
   );
@@ -87,7 +92,6 @@ export default function App() {
   if (!authed) return <Login onOk={() => setAuthed(true)} />;
 
   const reset = async () => {
-    if (!window.confirm('Reset the demo to its starting data?')) return;
     await api('/reset', { method: 'POST' });
     flash('Demo data reset');
     navigate('/');
