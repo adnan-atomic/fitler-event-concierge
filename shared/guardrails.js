@@ -8,7 +8,8 @@ const RULES = [
     patterns: [
       /\b(?:date|space|room|hall|venue|evening|day|weekend)\b[^.!?\n]{0,40}?\b(?:is|are|has been|have been)\s+(?:confirmed|available|reserved|booked|held|secured|locked in)\b/gi,
       /\bwe(?:'ve| have| are|'re)?\s+(?:confirmed|reserved|held|booked|locked in|secured)\s+(?:the\s+|your\s+|this\s+)?(?:date|space|room|hall|evening|day|venue|you in|it)\b/gi,
-      /\b(?:we\s+)?guarantee(?:d)?\s+(?:you\s+)?(?:the\s+)?(?:date|availability|space|room)\b(?!\s+(?:deadline|is due))/gi,
+      /\b(?:we|i|can|will|to)\s+guarantee(?:d)?\s+(?:you\s+)?(?:the\s+|your\s+)?(?:date|availability|space|room)\b/gi,
+      /\bguaranteed?\s+(?:the|your)\s+(?:date|availability|space|room)\b/gi,
     ],
   },
   {
