@@ -17,7 +17,11 @@ A working prototype built by **Atomic Computing** for the Fitler Club AI assessm
 ### Guardrails (from Fitler Club's own answers)
 Never confirm a date is available · never quote a firm price · never commit a vendor · never promise a discount · never agree to anything outside policy. Enforced in `shared/guardrails.js` live in the browser and again on the server before anything is sent or published. Every AI and human action is written to an activity log.
 
+**Live demo:** https://fitler-event-concierge.adnan-sajid.workers.dev (coordinator console behind a passcode; client links work without it)
+
 ## 7-minute demo script
+Before you start: click **Reset demo** twice (top right) to restore the starting data. Expect ~15s for triage and ~45s for the planning guide, because Claude writes them live.
+
 1. **Pipeline**: three sample events at different stages.
 2. **+ New inquiry → "Corporate offsite" sample → Triage**: fit signals, space suggestions, reply draft in seconds. Send it.
 3. **Send concierge link** (after the site visit) → **Open as client** on a phone.
