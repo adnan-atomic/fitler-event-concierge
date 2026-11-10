@@ -324,7 +324,7 @@ export default function EventWorkspace({ id, flash }) {
       </div>
       <Stepper status={e.status} />
       <div className="tabs">{tabs.map(([k, l]) => <button key={k} className={`tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === 'inquiry' && <InquiryTab e={e} reload={load} flash={flash} />}
+      {tab === 'inquiry' && <InquiryTab key={e.updated_at} e={e} reload={load} flash={flash} />}
       {tab === 'guide' && <GuideTab key={e.updated_at} e={e} reload={load} flash={flash} />}
       {tab === 'brief' && <BriefTab e={e} reload={load} flash={flash} />}
       {tab === 'requests' && <RequestsTab e={e} requests={d.requests} reload={load} flash={flash} />}

@@ -36,36 +36,45 @@ export async function resolveModel(env, force = false) {
   return resolvedModel;
 }
 
+// Structured output: Claude must answer by calling the `respond` tool, so the API returns parsed JSON.
+const RESPOND_TOOL = {
+  name: 'respond',
+  description: 'Return your complete answer as a JSON object with exactly the fields requested.',
+  input_schema: { type: 'object', additionalProperties: true },
+};
+
 async function claudeJSON(env, { system, prompt, maxTokens = 3000 }) {
   if (!env.ANTHROPIC_API_KEY) return null;
-  const call = async (model, withThinkingOff = true) => fetch('https://api.anthropic.com/v1/messages', {
+  const call = async (model, strict = true) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: anthropicHeaders(env),
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      system: `${system}\n\nRespond with a single JSON object only. No prose, no markdown fences.`,
+      system: `${system}\n\nAlways answer by calling the respond tool with a single JSON object.`,
       messages: [{ role: 'user', content: prompt }],
-      ...(withThinkingOff ? { thinking: { type: 'disabled' } } : {}),
+      tools: [RESPOND_TOOL],
+      tool_choice: strict ? { type: 'tool', name: 'respond' } : { type: 'any' },
+      ...(strict ? { thinking: { type: 'disabled' } } : {}),
     }),
   });
   let model = await resolveModel(env);
   let res = await call(model);
   if (res.status === 404) { model = await resolveModel(env, true); res = await call(model); } // configured model not found
-  if (res.status === 400) { // some models reject the thinking parameter; retry without it
+  if (res.status === 400) { // a model that rejects the thinking/tool_choice combination: retry in relaxed mode
     const body = await res.text();
-    if (/thinking/i.test(body)) res = await call(model, false);
+    if (/thinking|tool_choice/i.test(body)) res = await call(model, false);
     else throw new Error(`Anthropic 400: ${body.slice(0, 300)}`);
   }
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
+  const tool = (data.content || []).find((c) => c.type === 'tool_use' && c.input && typeof c.input === 'object');
+  if (tool) return tool.input;
   const text = (data.content || []).filter((c) => c.type === 'text').map((c) => c.text || '').join('');
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
-  if (start < 0 || end < 0) {
-    throw new Error(`Model returned no JSON (model ${model}, stop ${data.stop_reason}, blocks ${(data.content || []).map((c) => c.type).join(',')}, text "${text.slice(0, 120)}")`);
-  }
-  return JSON.parse(text.slice(start, end + 1));
+  if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
+  throw new Error(`No structured output (model ${model}, stop ${data.stop_reason}, blocks ${(data.content || []).map((c) => c.type).join(',')})`);
 }
 
 async function withFallback(env, label, aiFn, mockFn) {
@@ -91,10 +100,10 @@ export async function triage(env, inquiry, contact) {
 
 Pre-computed facts (trust these numbers): ${JSON.stringify({ extracted: base.extracted, spaces: base.spaces, signals: base.signals })}
 
-Return JSON:
+Fields to return (spaces: at most 3, best first; use null for unknown values):
 {
- "extracted": {"event_type":"corporate|social|wedding|mitzvah","guests":number|null,"date":string|null,"format":string,"is_member":bool,"planner":bool,"budget":string|null},
- "spaces": [{"space_id":"id from KB","name":"...","capacity":number,"reason":"one short sentence"}] (max 3, best first),
+ "extracted": {"event_type":"corporate|social|wedding|mitzvah","guests":0,"date":"","format":"","is_member":false,"planner":false,"budget":""},
+ "spaces": [{"space_id":"id from KB","name":"...","capacity":0,"reason":"one short sentence"}],
  "signals": [{"label":"...","value":"...","tone":"good|warn|bad|neutral"}],
  "fit": "Strong fit | Good fit, a few things to ask | Review before pursuing",
  "missing": ["what we still need to ask"],
@@ -142,7 +151,7 @@ export async function checkChange(env, beo, message) {
 Client message: """${message}"""
 
 Return JSON:
-{"summary":"one sentence","mismatches":[{"field":"...","current":"value on BEO","requested":"what the client now says","departments":["Kitchen"|"AV"|"Staffing"|"Setup"|"Coordinator"],"severity":"high|medium|low","note":"why it matters operationally"}],
+{"summary":"one sentence","mismatches":[{"field":"...","current":"value on BEO","requested":"what the client now says","departments":["Kitchen"|"AV"|"Staffing"|"Setup"|"Coordinator"],"severity":"high","note":"why it matters operationally"}],
  "suggested_reply":"a short warm reply from the coordinator acknowledging the changes and saying a revised BEO will follow. Never confirm availability, firm prices or discounts."}`,
       maxTokens: 3000,
     });
@@ -157,7 +166,7 @@ export async function answerFaq(env, question, event) {
     const out = await claudeJSON(env, {
       system: `${BASE_RULES}\n\nYou are the Fitler Club event concierge answering a prospective client's question. Answer in 2–4 sentences from the knowledge base only. If the answer depends on availability, firm pricing, a vendor commitment, a discount or a policy exception, say the coordinator will follow up personally and set "answered": false. Return ONLY JSON.`,
       prompt: `Client event: ${event?.title || ''} (${event?.event_type || ''}). Question: """${question}"""
-Return JSON: {"answer":"...","answered":true|false,"source":"which KB entry you used"}`,
+Return JSON: {"answer":"...","answered":true,"source":"which KB entry you used"}`,
       maxTokens: 1000,
     });
     if (!out.answer) throw new Error('bad shape');
