@@ -71,7 +71,7 @@ export default function Dashboard({ flash }) {
       <div className="spread">
         <div>
           <div className="eyebrow">Coordinator console</div>
-          <h1>Events pipeline</h1>
+          <h1 style={{ marginTop: 8 }}>Events <em>pipeline</em></h1>
           <p className="muted" style={{ margin: '4px 0 0' }}>AI drafts and flags. You review, approve and send.</p>
         </div>
         <button className="btn brass" onClick={() => setModal(true)}>+ New inquiry</button>

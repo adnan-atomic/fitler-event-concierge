@@ -3,6 +3,18 @@ import { api, getPass, setPass, navigate } from './api.js';
 import Dashboard from './pages/Dashboard.jsx';
 import EventWorkspace from './pages/EventWorkspace.jsx';
 import ClientPortal from './pages/ClientPortal.jsx';
+import { ATOMIC_LOGO, FITLER_LOGO } from './brand.js';
+
+export function Brand({ title }) {
+  return (
+    <span className="brand">
+      <img className="logo-atomic" src={ATOMIC_LOGO} alt="Atomic Computing" />
+      <span className="brand-div" />
+      <img className="logo-fitler" src={FITLER_LOGO} alt="Fitler Club" />
+      {title && <span className="brand-title">{title}</span>}
+    </span>
+  );
+}
 
 function usePath() {
   const [path, setPath] = useState(window.location.pathname);
@@ -27,11 +39,12 @@ function Login({ onOk }) {
     try { await api('/login', { method: 'POST', body: { passcode: v } }); onOk(); } catch { setErr('That passcode did not work.'); }
   };
   return (
-    <div className="client" style={{ display: 'grid', placeItems: 'center', padding: 16 }}>
-      <form className="card" style={{ width: 'min(380px, 100%)', textAlign: 'center' }} onSubmit={submit}>
+    <div className="login">
+      <form className="card" onSubmit={submit}>
+        <Brand />
         <div className="eyebrow">Prototype</div>
-        <h1 style={{ margin: '6px 0 4px' }}>Fitler Club</h1>
-        <p className="muted" style={{ marginTop: 0 }}>Event Concierge · Coordinator console</p>
+        <h1 style={{ margin: '10px 0 4px', fontSize: 30 }}>Event <em>Concierge</em></h1>
+        <p className="muted" style={{ marginTop: 0 }}>Coordinator console for Fitler Club</p>
         <input className="input" type="password" placeholder="Demo passcode" value={v} onChange={(e) => setV(e.target.value)} autoFocus />
         {err && <p className="small" style={{ color: 'var(--bad)' }}>{err}</p>}
         <button className="btn" style={{ marginTop: 14, width: '100%', justifyContent: 'center' }}>Enter</button>
@@ -44,13 +57,13 @@ function Login({ onOk }) {
 function TopBar({ config, onReset }) {
   const [arm, setArm] = useState(false);
   const click = () => {
-    if (!arm) { setArm(true); setTimeout(() => setArm(false), 4000); return; }
+    if (!arm) { setArm(true); setTimeout(() => setArm(false), 8000); return; }
     setArm(false); onReset();
   };
   return (
     <header className="topbar">
-      <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-        Fitler Club <small>Event Concierge</small>
+      <a className="brand-link" style={{ textDecoration: "none" }} href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
+        <Brand title="Event Concierge" />
       </a>
       <div className="row" style={{ gap: 10 }}>
         {config && (
@@ -60,7 +73,7 @@ function TopBar({ config, onReset }) {
           </span>
         )}
         {config && <span className="pill" title="Where data is stored">{config.store === 'supabase' ? 'Supabase' : 'In-memory'}</span>}
-        <button className="link" onClick={click} style={arm ? { color: '#f0c27a' } : null}>{arm ? 'Click again to reset' : 'Reset demo'}</button>
+        <button className={`link ${arm ? 'armed' : ''}`} onClick={click}>{arm ? 'Click again to reset' : 'Reset demo'}</button>
       </div>
     </header>
   );

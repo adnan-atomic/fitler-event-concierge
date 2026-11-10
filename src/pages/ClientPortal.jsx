@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { intakeQuestions } from '../../shared/intake.js';
 import { KB } from '../../shared/kb.js';
 import { GuideView } from '../components/ui.jsx';
+import { FITLER_LOGO } from '../brand.js';
 
 function FaqPanel({ token }) {
   const [q, setQ] = useState('');
@@ -147,6 +148,7 @@ export default function ClientPortal({ token }) {
 
   const header = (
     <div className="client-top">
+      <img className="logo-fitler" src={FITLER_LOGO} alt="Fitler Club" />
       <div className="wm">Fitler Club</div>
       <div className="sub">Event Planning Concierge</div>
     </div>

@@ -229,7 +229,7 @@ function Mismatches({ analysis }) {
   const mm = analysis.mismatches || [];
   return (
     <div className="stack">
-      <div className={mm.length ? 'flagbox' : 'okbox'} style={mm.length ? { background: '#fff8e8', borderColor: '#f0d9a6', color: '#6b4a10' } : null}><b>{analysis.summary}</b></div>
+      <div className={mm.length ? 'flagbox' : 'okbox'} style={mm.length ? { background: 'var(--warn-bg)', borderColor: 'transparent', color: 'var(--warn)' } : null}><b>{analysis.summary}</b></div>
       {mm.length > 0 && (
         <table className="t">
           <thead><tr><th>What changed</th><th>On BEO</th><th>Client now says</th><th>Notify</th></tr></thead>

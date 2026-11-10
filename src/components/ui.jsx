@@ -38,8 +38,8 @@ export function BeoView({ beo, changed = [] }) {
   return (
     <div className="beo">
       <div className="beo-h">
-        <div><div className="small" style={{ letterSpacing: '.14em', textTransform: 'uppercase', color: '#cdb98f' }}>Banquet event order · draft</div><b>{beo.event_name}</b></div>
-        <span className="pill" style={{ background: 'rgba(255,255,255,.1)', color: '#f6f0e4', borderColor: 'rgba(255,255,255,.2)' }}>Revision {beo.revision || 1}</span>
+        <div><div className="small" style={{ letterSpacing: '.14em', textTransform: 'uppercase' }}>Banquet event order · draft</div><b>{beo.event_name}</b></div>
+        <span className="pill" style={{ background: 'rgba(255,255,255,.08)', color: '#EAF1F7', borderColor: 'rgba(255,255,255,.2)' }}>Revision {beo.revision || 1}</span>
       </div>
       <div className="beo-grid">
         <div><label>Date</label>{beo.date}</div>
@@ -89,15 +89,15 @@ export function GuideView({ guide, contactName, interactive, onSendSelections })
       <div className="guide-hero">
         <div className="eyebrow">Your planning guide{contactName ? ` · prepared for ${contactName}` : ''}</div>
         <h1 style={{ margin: '8px 0 10px' }}>{guide.title}</h1>
-        <p style={{ margin: 0, color: '#e6ddcb', maxWidth: 680 }}>{guide.intro}</p>
+        <p style={{ margin: 0, maxWidth: 680 }}>{guide.intro}</p>
         {guide.estimate && (
           <div className="estimate">
-            <div><div className="small" style={{ color: '#cdb98f' }}>Indicative range for food, bar & AV</div>
+            <div><div className="small">Indicative range for food, bar & AV</div>
               <div className="big">{money(guide.estimate.low * scale)} – {money(guide.estimate.high * scale)}</div></div>
-            <div className="small" style={{ color: '#cfc5b2', maxWidth: 340 }}>{guide.estimate.note}</div>
+            <div className="small" style={{ maxWidth: 340 }}>{guide.estimate.note}</div>
           </div>
         )}
-        {guide.approved_at && <div className="small" style={{ marginTop: 14, color: '#cdb98f' }}>✓ Reviewed by your coordinator · {new Date(guide.approved_at).toLocaleDateString()}</div>}
+        {guide.approved_at && <div className="small" style={{ marginTop: 14, color: 'var(--ember)', fontFamily: 'var(--mono)', letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 10.5 }}>✓ Reviewed by your coordinator · {new Date(guide.approved_at).toLocaleDateString()}</div>}
       </div>
 
       <div className="grid2">
