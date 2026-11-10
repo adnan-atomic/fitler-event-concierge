@@ -38,19 +38,33 @@ export async function resolveModel(env, force = false) {
 
 async function claudeJSON(env, { system, prompt, maxTokens = 3000 }) {
   if (!env.ANTHROPIC_API_KEY) return null;
-  const call = async (model) => fetch('https://api.anthropic.com/v1/messages', {
+  const call = async (model, withThinkingOff = true) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: anthropicHeaders(env),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system: `${system}\n\nRespond with a single JSON object only. No prose, no markdown fences.`,
+      messages: [{ role: 'user', content: prompt }],
+      ...(withThinkingOff ? { thinking: { type: 'disabled' } } : {}),
+    }),
   });
-  let res = await call(await resolveModel(env));
-  if (res.status === 404) res = await call(await resolveModel(env, true)); // configured model not found: fall back to newest Sonnet
+  let model = await resolveModel(env);
+  let res = await call(model);
+  if (res.status === 404) { model = await resolveModel(env, true); res = await call(model); } // configured model not found
+  if (res.status === 400) { // some models reject the thinking parameter; retry without it
+    const body = await res.text();
+    if (/thinking/i.test(body)) res = await call(model, false);
+    else throw new Error(`Anthropic 400: ${body.slice(0, 300)}`);
+  }
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
-  const text = (data.content || []).map((c) => c.text || '').join('');
+  const text = (data.content || []).filter((c) => c.type === 'text').map((c) => c.text || '').join('');
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
-  if (start < 0 || end < 0) throw new Error('Model returned no JSON');
+  if (start < 0 || end < 0) {
+    throw new Error(`Model returned no JSON (model ${model}, stop ${data.stop_reason}, blocks ${(data.content || []).map((c) => c.type).join(',')}, text "${text.slice(0, 120)}")`);
+  }
   return JSON.parse(text.slice(start, end + 1));
 }
 
@@ -86,7 +100,7 @@ Return JSON:
  "missing": ["what we still need to ask"],
  "reply_draft": "A short, personal first reply in the coordinator's voice (signed 'Fitler Club Events'). Suggest a space, ask for the missing details (max 3), invite them for a 30-minute tour. NEVER confirm availability, NEVER quote a price, NEVER promise a discount."
 }`,
-      maxTokens: 1500,
+      maxTokens: 3000,
     });
     return { ...base, ...out, extracted: { ...base.extracted, ...(out.extracted || {}) } };
   }, fallback);
@@ -109,7 +123,7 @@ Here is a structurally correct draft built from templates. Rewrite it so it read
 ${JSON.stringify(base)}
 
 Return JSON: {"guide": {...}, "brief": {...}, "beo": {...}}`,
-      maxTokens: 6000,
+      maxTokens: 12000,
     });
     return {
       guide: { ...base.guide, ...(out.guide || {}), options: base.guide.options, estimate: base.guide.estimate },
@@ -130,7 +144,7 @@ Client message: """${message}"""
 Return JSON:
 {"summary":"one sentence","mismatches":[{"field":"...","current":"value on BEO","requested":"what the client now says","departments":["Kitchen"|"AV"|"Staffing"|"Setup"|"Coordinator"],"severity":"high|medium|low","note":"why it matters operationally"}],
  "suggested_reply":"a short warm reply from the coordinator acknowledging the changes and saying a revised BEO will follow. Never confirm availability, firm prices or discounts."}`,
-      maxTokens: 1500,
+      maxTokens: 3000,
     });
     if (!Array.isArray(out.mismatches)) throw new Error('bad shape');
     return out;
@@ -144,7 +158,7 @@ export async function answerFaq(env, question, event) {
       system: `${BASE_RULES}\n\nYou are the Fitler Club event concierge answering a prospective client's question. Answer in 2–4 sentences from the knowledge base only. If the answer depends on availability, firm pricing, a vendor commitment, a discount or a policy exception, say the coordinator will follow up personally and set "answered": false. Return ONLY JSON.`,
       prompt: `Client event: ${event?.title || ''} (${event?.event_type || ''}). Question: """${question}"""
 Return JSON: {"answer":"...","answered":true|false,"source":"which KB entry you used"}`,
-      maxTokens: 500,
+      maxTokens: 1000,
     });
     if (!out.answer) throw new Error('bad shape');
     return out;
