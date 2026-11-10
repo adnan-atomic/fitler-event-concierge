@@ -153,8 +153,8 @@ Rewrite it for this specific client:
 - Decisions: 4-6 short items. Next steps: 3-4 items, owner "You" or "Fitler Club".
 - Also return beo_timeline matching the run of show.
 
-Return: {"intro":"...","sections":[{"id":"...","heading":"...","body":"...","items":["..."]}],"decisions":["..."],"next_steps":[{"owner":"You","text":"..."}],"beo_timeline":[{"time":"8:30","item":"..."}]}`,
-      maxTokens: 5000,
+Return ALL five keys (beo_timeline is required): {"intro":"...","sections":[{"id":"...","heading":"...","body":"...","items":["..."]}],"decisions":["..."],"next_steps":[{"owner":"You","text":"..."}],"beo_timeline":[{"time":"8:30","item":"..."}]}`,
+      maxTokens: 8000,
     });
     const o = out.guide && !out.sections ? out.guide : out; // tolerate a wrapped answer
     console.log('[ai:guide] keys', Object.keys(o || {}).join(','));
@@ -173,7 +173,14 @@ Return: {"intro":"...","sections":[{"id":"...","heading":"...","body":"...","ite
     const beo = { ...base.beo };
     if (Array.isArray(o.beo_timeline) && o.beo_timeline.length) {
       beo.timeline = o.beo_timeline.map((t) => ({ time: String(t.time || ''), item: String(t.item || '') }));
+    } else {
+      // Derive the BEO timeline from the personalised run of show ("HH:MM — item").
+      const run = sections.find((x) => x.id === 'run');
+      const parsed = (run?.items || []).map((line) => String(line).match(/^\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*[—–-]+\s*(.+)$/i)).filter(Boolean);
+      if (parsed.length >= 2) beo.timeline = parsed.map((m) => ({ time: m[1].trim(), item: m[2].trim() }));
     }
+    const first = beo.timeline?.[0]?.time;
+    if (first && /^\d/.test(first)) beo.start_time = /am|pm/i.test(first) ? first : `${first} ${Number(first.split(':')[0]) < 7 || Number(first.split(':')[0]) === 12 ? 'PM' : 'AM'}`;
     const brief = { ...base.brief, timeline: beo.timeline.map((t) => `${t.time} ${t.item}`.trim()).join(' | ') };
     return { guide, brief, beo };
   }, fallback);
