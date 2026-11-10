@@ -179,6 +179,31 @@ Return: {"intro":"...","sections":[{"id":"...","heading":"...","body":"...","ite
   }, fallback);
 }
 
+const DIET_NEEDS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy', 'Kosher-style', 'Halal'];
+// Map free-form model labels onto the field names the BEO "apply" step understands.
+function normalizeMismatch(m) {
+  const f = String(m.field || '');
+  const req = String(m.requested ?? '');
+  const num = (req.match(/\d+/) || [])[0];
+  const text = `${f} ${req}`.toLowerCase();
+  let field = f;
+  let requested = req;
+  if (/guest|headcount|attendee|count/i.test(f) && !/diet|vegan|vegetarian|allerg/i.test(text)) { field = 'Guest count'; requested = num || req; }
+  else if (/diet|vegan|vegetarian|gluten|nut|kosher|halal|dairy|shellfish|allerg/i.test(text)) {
+    const need = DIET_NEEDS.find((d) => text.includes(d.toLowerCase().split(/[ -]/)[0])) || 'Other dietary';
+    field = `Dietary: ${need}`; requested = num || req;
+  } else if (/time|start|schedule/i.test(f)) {
+    const meal = (text.match(/dinner|lunch|breakfast|drinks|cocktail|reception/) || [])[0];
+    field = meal ? `${meal[0].toUpperCase()}${meal.slice(1)} start time` : 'Start time';
+    requested = (req.match(/\d{1,2}(:\d{2})?\s*(am|pm)?/i) || [req])[0].toUpperCase();
+  } else if (/\bav\b|audio|podium|mic|projector|screen|livestream/i.test(text)) { field = 'AV'; requested = /^add /i.test(req) ? req : `Add ${req}`; }
+  else if (/setup|layout|seating/i.test(f)) field = 'Room setup';
+  else if (/capacity|space|room/i.test(f)) field = 'Space capacity';
+  else if (/date/i.test(f)) field = 'Event date';
+  const departments = (m.departments || []).map((d) => String(d).charAt(0).toUpperCase() + String(d).slice(1));
+  return { ...m, field, requested, current: String(m.current ?? ''), departments };
+}
+
 export async function checkChange(env, beo, message) {
   const fallback = () => mockChangeCheck(beo, message);
   return withFallback(env, 'change', async () => {
@@ -188,12 +213,12 @@ export async function checkChange(env, beo, message) {
 Client message: """${message}"""
 
 Return JSON:
-{"summary":"one sentence","mismatches":[{"field":"...","current":"value on BEO","requested":"what the client now says","departments":["Kitchen"|"AV"|"Staffing"|"Setup"|"Coordinator"],"severity":"high","note":"why it matters operationally"}],
+{"summary":"one sentence","mismatches":[{"field":"one of: Guest count | Dietary: <need> | <Meal> start time | AV | Room setup | Space capacity | Event date | Other","current":"value on BEO","requested":"what the client now says","departments":["Kitchen"|"AV"|"Staffing"|"Setup"|"Coordinator"],"severity":"high","note":"why it matters operationally"}],
  "suggested_reply":"a short warm reply from the coordinator acknowledging the changes and saying a revised BEO will follow. Never confirm availability, firm prices or discounts."}`,
       maxTokens: 3000,
     });
     if (!Array.isArray(out.mismatches)) throw new Error('bad shape');
-    return out;
+    return { ...out, mismatches: out.mismatches.map(normalizeMismatch) };
   }, fallback);
 }
 
