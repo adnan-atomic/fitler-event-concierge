@@ -38,7 +38,10 @@ function clientView(e, requests) {
 // Apply flagged BEO differences to the BEO draft (coordinator-initiated).
 function applyToBeo(beo, mismatches = []) {
   const next = structuredClone(beo || {});
+  const applied = [];
   for (const m of mismatches) {
+    if (!m.requested || /not stated|unclear|unknown|tbd|tbc|to confirm|n\/a/i.test(String(m.requested))) continue; // nothing concrete to apply
+    applied.push(m.field);
     if (m.field === 'Guest count' && /^\d+$/.test(m.requested)) next.guest_count = Number(m.requested);
     else if (m.field.startsWith('Dietary: ')) {
       const need = m.field.slice(9);
@@ -50,10 +53,11 @@ function applyToBeo(beo, mismatches = []) {
       const entry = (next.timeline || []).find((x) => x.item.toLowerCase().includes(word));
       if (entry) entry.time = m.requested.replace(/\s?(AM|PM)$/i, ''); else next.start_time = m.requested;
     } else if (m.field === 'AV') {
-      next.av = [...new Set([...(next.av || []), m.requested.replace(/^Add /, '')])];
+      const item = m.requested.replace(/^add\s+(a|an|the)?\s*/i, '');
+      next.av = [...new Set([...(next.av || []), item.charAt(0).toUpperCase() + item.slice(1)])];
     } else if (m.field === 'Room setup') next.setup = m.requested;
   }
-  next.changed = mismatches.map((m) => m.field);
+  next.changed = applied;
   next.revision = (next.revision || 1) + 1;
   next.revised_at = new Date().toISOString();
   return next;
