@@ -43,30 +43,40 @@ const RESPOND_TOOL = {
   input_schema: { type: 'object', additionalProperties: true },
 };
 
+// Try the strictest request shape first, then relax for models that reject a parameter combination.
+const MODES = [
+  { tools: true, choice: { type: 'tool', name: 'respond' }, thinkingOff: true },
+  { tools: true, choice: { type: 'auto' }, thinkingOff: false },
+  { tools: false, choice: null, thinkingOff: false },
+];
+let workingMode = 0;
+
 async function claudeJSON(env, { system, prompt, maxTokens = 3000 }) {
   if (!env.ANTHROPIC_API_KEY) return null;
-  const call = async (model, strict = true) => fetch('https://api.anthropic.com/v1/messages', {
+  const call = (model, mode) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: anthropicHeaders(env),
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      system: `${system}\n\nAlways answer by calling the respond tool with a single JSON object.`,
+      system: `${system}\n\n${mode.tools ? 'Always answer by calling the respond tool with a single JSON object.' : 'Respond with a single JSON object only: no prose, no markdown fences.'}`,
       messages: [{ role: 'user', content: prompt }],
-      tools: [RESPOND_TOOL],
-      tool_choice: strict ? { type: 'tool', name: 'respond' } : { type: 'any' },
-      ...(strict ? { thinking: { type: 'disabled' } } : {}),
+      ...(mode.tools ? { tools: [RESPOND_TOOL], tool_choice: mode.choice } : {}),
+      ...(mode.thinkingOff ? { thinking: { type: 'disabled' } } : {}),
     }),
   });
   let model = await resolveModel(env);
-  let res = await call(model);
-  if (res.status === 404) { model = await resolveModel(env, true); res = await call(model); } // configured model not found
-  if (res.status === 400) { // a model that rejects the thinking/tool_choice combination: retry in relaxed mode
-    const body = await res.text();
-    if (/thinking|tool_choice/i.test(body)) res = await call(model, false);
-    else throw new Error(`Anthropic 400: ${body.slice(0, 300)}`);
+  let res;
+  const errors = [];
+  for (let i = workingMode; i < MODES.length; i++) {
+    res = await call(model, MODES[i]);
+    if (res.status === 404 && i === workingMode) { model = await resolveModel(env, true); res = await call(model, MODES[i]); }
+    if (res.status === 400) { errors.push((await res.text()).slice(0, 400)); continue; }
+    workingMode = i;
+    break;
   }
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (res.status === 400) throw new Error(`Anthropic 400 in all modes: ${errors.join(' | ')}`);
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 400)}`);
   const data = await res.json();
   const tool = (data.content || []).find((c) => c.type === 'tool_use' && c.input && typeof c.input === 'object');
   if (tool) return tool.input;
