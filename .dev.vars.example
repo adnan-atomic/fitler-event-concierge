@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local development. Never commit real values.
+# Leave any of these empty to run in mock mode (template AI + in-memory data).
+ANTHROPIC_API_KEY=
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+DEMO_PASSCODE=
