@@ -130,25 +130,52 @@ export async function generateGuide(env, event) {
   const fallback = () => mockGuide(event, coordinator);
   return withFallback(env, 'guide', async () => {
     const base = fallback();
+    const g = base.guide;
     const out = await claudeJSON(env, {
-      system: `${BASE_RULES}\n\nYou draft a personalised planning guide for a client after their site visit. A coordinator reviews it before the client sees it. Return ONLY JSON.`,
+      system: `${BASE_RULES}\n\nYou personalise a client planning guide after their site visit. A coordinator reviews it before the client sees it.`,
       prompt: `Event: ${event.title} (${event.event_type})
 Client: ${event.contact?.name}${event.contact?.company ? `, ${event.contact.company}` : ''}
 Original inquiry: """${event.inquiry_text || ''}"""
-Intake answers: ${JSON.stringify(event.intake?.answers || {})}
-Coordinator triage: ${JSON.stringify(event.triage?.spaces || [])}
+Client's concierge answers: ${JSON.stringify(event.intake?.answers || {})}
+Suggested spaces: ${JSON.stringify(event.triage?.spaces || [])}
 
-Here is a structurally correct draft built from templates. Rewrite it so it reads as personal and specific to this client (reference their occasion, honoree, agenda, approvers). Keep the same JSON shape and section ids, keep all prices as the KB ranges labelled "indicative", keep "options" and "estimate" unchanged, and keep "brief" and "beo" factual.
-${JSON.stringify(base)}
+Template draft (facts and ranges are correct; wording is generic):
+intro: ${JSON.stringify(g.intro)}
+sections: ${JSON.stringify(g.sections.map(({ id, heading, body, items }) => ({ id, heading, body, items })))}
+decisions: ${JSON.stringify(g.decisions.map((d) => d.text))}
+next_steps: ${JSON.stringify(g.next_steps)}
 
-Return JSON: {"guide": {...}, "brief": {...}, "beo": {...}}`,
-      maxTokens: 12000,
+Rewrite it for this specific client:
+- Warm, specific intro (2-3 sentences) referencing their occasion and who signs off.
+- Keep the same section ids and order. Keep every price exactly as given and labelled "indicative".
+- Build the "run" section items from the client's own agenda where they gave one (format "HH:MM — item").
+- Reflect their answers exactly (e.g. arrival "A mix" means some guests drive, not most).
+- Decisions: 4-6 short items. Next steps: 3-4 items, owner "You" or "Fitler Club".
+- Also return beo_timeline matching the run of show.
+
+Return: {"intro":"...","sections":[{"id":"...","heading":"...","body":"...","items":["..."]}],"decisions":["..."],"next_steps":[{"owner":"You","text":"..."}],"beo_timeline":[{"time":"8:30","item":"..."}]}`,
+      maxTokens: 5000,
     });
-    return {
-      guide: { ...base.guide, ...(out.guide || {}), options: base.guide.options, estimate: base.guide.estimate },
-      brief: { ...base.brief, ...(out.brief || {}) },
-      beo: { ...base.beo, ...(out.beo || {}) },
+    const o = out.guide && !out.sections ? out.guide : out; // tolerate a wrapped answer
+    console.log('[ai:guide] keys', Object.keys(o || {}).join(','));
+    if (!Array.isArray(o.sections) || !o.sections.length) throw new Error('Guide rewrite missing sections');
+    const sections = g.sections.map((sec) => {
+      const r = o.sections.find((x) => x.id === sec.id);
+      return r ? { ...sec, heading: r.heading || sec.heading, body: r.body ?? sec.body, items: Array.isArray(r.items) ? r.items : sec.items } : sec;
+    });
+    const guide = {
+      ...g,
+      intro: o.intro || g.intro,
+      sections,
+      decisions: Array.isArray(o.decisions) && o.decisions.length ? o.decisions.map((t, i) => ({ id: `d${i + 1}`, text: typeof t === 'string' ? t : t.text })) : g.decisions,
+      next_steps: Array.isArray(o.next_steps) && o.next_steps.length ? o.next_steps.map((n) => (typeof n === 'string' ? { owner: 'Fitler Club', text: n } : n)) : g.next_steps,
     };
+    const beo = { ...base.beo };
+    if (Array.isArray(o.beo_timeline) && o.beo_timeline.length) {
+      beo.timeline = o.beo_timeline.map((t) => ({ time: String(t.time || ''), item: String(t.item || '') }));
+    }
+    const brief = { ...base.brief, timeline: beo.timeline.map((t) => `${t.time} ${t.item}`.trim()).join(' | ') };
+    return { guide, brief, beo };
   }, fallback);
 }
 

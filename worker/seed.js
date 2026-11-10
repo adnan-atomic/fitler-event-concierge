@@ -31,11 +31,11 @@ export function seedEvents() {
   Object.assign(e1, mockGuide(e1));
   e1.guide.approved_at = ago(1); e1.guide.approved_by = 'Coordinator';
   events.push(e1);
-  log(e1.id, 'ai', 'Inquiry triaged; reply drafted', { engine: 'template' }, ago(9));
+  log(e1.id, 'ai', 'Inquiry triaged; reply drafted', null, ago(9));
   log(e1.id, 'coordinator', 'Reply sent to client', null, ago(9));
   log(e1.id, 'coordinator', 'Site visit completed; concierge link sent', null, ago(4));
   log(e1.id, 'client', 'Concierge intake completed', null, ago(2));
-  log(e1.id, 'ai', 'Planning guide, brief and BEO drafted', { engine: 'template' }, ago(2));
+  log(e1.id, 'ai', 'Planning guide, brief and BEO drafted', null, ago(2));
   log(e1.id, 'coordinator', 'Guide reviewed (0 guardrail flags) and shared', null, ago(1));
   requests.push({ id: 'aaaaaaa1-0000-4000-8000-000000000001', event_id: e1.id, created_at: ago(0, 5), kind: 'question', source: 'client_portal',
     body: 'Can our two remote partners present over video during the morning session, and will someone help them test beforehand?', analysis: null, status: 'open' });
@@ -50,7 +50,7 @@ export function seedEvents() {
     contact: e2Contact, inquiry_text: e2Inquiry, triage: mockTriage(e2Inquiry, e2Contact), reply_draft: null,
     intake: null, guide: null, brief: null, beo: null,
   });
-  log('22222222-2222-4222-8222-222222222222', 'ai', 'Inquiry triaged; reply drafted', { engine: 'template' }, ago(6));
+  log('22222222-2222-4222-8222-222222222222', 'ai', 'Inquiry triaged; reply drafted', null, ago(6));
   log('22222222-2222-4222-8222-222222222222', 'coordinator', 'Reply sent to client', null, ago(6));
   log('22222222-2222-4222-8222-222222222222', 'coordinator', 'Site visit completed; concierge link sent', null, ago(1));
 
@@ -64,7 +64,7 @@ export function seedEvents() {
     contact: e3Contact, inquiry_text: e3Inquiry, triage: t3, reply_draft: t3.reply_draft,
     intake: null, guide: null, brief: null, beo: null,
   });
-  log('33333333-3333-4333-8333-333333333333', 'ai', 'Inquiry triaged; reply drafted', { engine: 'template' }, ago(0, 3));
+  log('33333333-3333-4333-8333-333333333333', 'ai', 'Inquiry triaged; reply drafted', null, ago(0, 3));
 
   return { events, requests, activity };
 }

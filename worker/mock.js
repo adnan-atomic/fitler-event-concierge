@@ -168,7 +168,8 @@ export function mockGuide(event, coordinator = 'the Fitler Club Events Team') {
   const avMap = { 'Screen / projector': 'screen', Microphones: 'mics', Podium: 'podium', 'Livestream / hybrid': 'stream', 'Music / DJ sound': 'dj', Uplighting: 'uplight' };
   const avItems = asArr(a.av).map((x) => KB.av.find((v) => v.id === avMap[x])).filter(Boolean);
   const diet = asArr(a.dietary).filter((x) => !/none/i.test(x));
-  const driving = /driv|mix/i.test(a.arrival || '');
+  const driving = /driv/i.test(a.arrival || '');
+  const someDriving = /mix/i.test(a.arrival || '');
   const timing = a.timing || '';
   const evening = /evening/i.test(timing);
   const fullDay = /full day|multi/i.test(timing);
@@ -187,14 +188,14 @@ export function mockGuide(event, coordinator = 'the Fitler Club Events Team') {
     diet.length ? 'Share final counts for each dietary need' : 'Tell us about any dietary needs as RSVPs come in',
     avItems.length ? 'Confirm AV needs and send any presentation files' : null,
     'Pick any add-ons you would like priced in your proposal',
-    a.approvers ? `Get sign-off from: ${a.approvers.replace(/\.$/, '')}` : null,
+    a.approvers ? `Get sign-off from your approvers (${a.approvers.replace(/\.$/, '')})` : null,
   ]).map((text, i) => ({ id: `d${i + 1}`, text }));
 
   const addonIds = type === 'corporate'
     ? ['welcome', 'signage', 'dessert', 'rooms', 'valet', 'cowork', 'screening']
     : ['welcome', 'florals', 'latenight', 'photobooth', 'wine', 'rooms', 'valet'];
   const options = addonIds.map((id) => KB.addons.find((x) => x.id === id)).filter(Boolean)
-    .filter((x) => x.id !== 'valet' || driving)
+    .filter((x) => x.id !== 'valet' || driving || someDriving)
     .filter((x) => x.id !== 'rooms' || !/^no/i.test(a.rooms || ''))
     .map((x) => ({ id: x.id, name: x.name, category: x.category, range: x.range, unit: x.unit }));
 
@@ -227,7 +228,7 @@ export function mockGuide(event, coordinator = 'the Fitler Club Events Team') {
       { id: 'av', heading: 'AV & production', body: avItems.length ? 'In-house AV for what you described:' : 'No AV requested so far. It is easy to add later.',
         items: avItems.map((v) => `${v.name}: indicative ${range(v.range)}`) },
       { id: 'arrival', heading: 'Getting here & parking', body: KB.policies.parking, items: list([
-        driving ? 'Most guests are driving, so valet is worth considering (see the add-ons below).' : null,
+        driving ? 'Most guests are driving, so valet is worth considering (see the add-ons below).' : someDriving ? 'Some guests will drive; valet is available if helpful.' : null,
         /yes|possibly/i.test(a.rooms || '') ? `Our ${KB.venue.hotelKeys}-room boutique hotel is in the building; a room block can be included in your proposal.` : null,
       ]) },
       { id: 'vendors', heading: 'Vendor ideas', body: 'Suggestions only. You are always welcome to bring your own.', items: KB.vendors
@@ -238,7 +239,7 @@ export function mockGuide(event, coordinator = 'the Fitler Club Events Team') {
     decisions,
     next_steps: [
       { owner: 'Fitler Club', text: 'Review your answers and come back with date options and a proposal' },
-      { owner: 'You', text: a.approvers ? `Share this guide with ${a.approvers.replace(/\.$/, '')}` : 'Share this guide with anyone who needs to weigh in' },
+      { owner: 'You', text: a.approvers ? `Share this guide with the people who sign off (${a.approvers.replace(/\.$/, '')})` : 'Share this guide with anyone who needs to weigh in' },
       { owner: 'You', text: 'Tick any add-ons you are curious about and send us your questions' },
       { owner: 'Fitler Club', text: 'Set up a menu conversation with our culinary team once you book' },
     ],
