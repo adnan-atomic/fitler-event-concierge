@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { api, navigate, timeAgo, STAGES, stageIndex } from '../api.js';
 import { SAMPLE_INQUIRIES } from '../../shared/samples.js';
 import { Actor, FitPill } from '../components/ui.jsx';
+
+const PipelineScene = lazy(() => import('../components/PipelineScene.jsx'));
 
 function NewInquiry({ onClose, flash }) {
   const [text, setText] = useState('');
@@ -68,14 +70,22 @@ export default function Dashboard({ flash }) {
 
   return (
     <main className="page">
-      <div className="spread">
-        <div>
+      <section className="dash-hero">
+        <div className="dash-copy">
           <div className="eyebrow">Coordinator console</div>
-          <h1 style={{ marginTop: 8 }}>Events <em>pipeline</em></h1>
-          <p className="muted" style={{ margin: '4px 0 0' }}>AI drafts and flags. You review, approve and send.</p>
+          <h1>Events <em>pipeline</em></h1>
+          <p>AI drafts and flags. You review, approve and send. Each orb is an inquiry landing in the space the concierge suggests.</p>
+          <button className="btn brass" onClick={() => setModal(true)}>+ New inquiry</button>
+          <div className="legend">
+            <span><i style={{ background: '#EE8434' }} />New inquiry</span>
+            <span><i style={{ background: '#7AAED6' }} />With client</span>
+            <span><i style={{ background: '#5FC49A' }} />Guide shared</span>
+          </div>
         </div>
-        <button className="btn brass" onClick={() => setModal(true)}>+ New inquiry</button>
-      </div>
+        <div className="dash-art">
+          <Suspense fallback={<div className="pipeline3d" />}><PipelineScene events={ev} /></Suspense>
+        </div>
+      </section>
 
       <div className="kpis">
         {kpis.map((k) => <div className="card kpi" key={k.l}><div className="n">{k.n}</div><div className="l">{k.l}</div></div>)}

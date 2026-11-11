@@ -167,7 +167,7 @@ async function handle(req, env, url) {
     for (const r of requests) if (r.status === 'open') open[r.event_id] = (open[r.event_id] || 0) + 1;
     return json({
       events: events.map((e) => ({ id: e.id, title: e.title, status: e.status, event_type: e.event_type, contact: e.contact, created_at: e.created_at, updated_at: e.updated_at,
-        fit: e.triage?.fit, guests: e.beo?.guest_count || e.triage?.extracted?.guests, date: e.intake?.answers?.date || e.triage?.extracted?.date, open_requests: open[e.id] || 0 })),
+        fit: e.triage?.fit, guests: e.beo?.guest_count || e.triage?.extracted?.guests, date: e.intake?.answers?.date || e.triage?.extracted?.date, open_requests: open[e.id] || 0, space: e.triage?.spaces?.[0]?.space_id || e.triage?.spaces?.[0]?.id || null })),
       activity: activity.map((a) => ({ ...a, event_title: events.find((e) => e.id === a.event_id)?.title })),
     });
   }
