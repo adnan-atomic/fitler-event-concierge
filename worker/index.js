@@ -30,9 +30,34 @@ function clientView(e, requests) {
     intake_submitted: !!e.intake?.submitted_at,
     guide: e.status === 'guide_shared' ? e.guide : null,
     requests: requests.filter((r) => r.source === 'client_portal').map((r) => ({
-      id: r.id, kind: r.kind, body: r.body, created_at: r.created_at, status: r.status, answer: r.analysis?.answer || null,
+      id: r.id, kind: r.kind, body: r.body, created_at: r.created_at, status: r.status, answer: r.analysis?.answer || null, applied: !!r.analysis?.applied_at,
     })),
   };
+}
+
+// Keep the client's planning guide in step when the coordinator applies a new guest count.
+function syncGuideGuests(guide, from, to) {
+  if (!guide || !to || from === to) return guide;
+  const g = structuredClone(guide);
+  if (g.estimate?.guests) {
+    const ratio = to / g.estimate.guests;
+    g.estimate.low = Math.round((g.estimate.low * ratio) / 100) * 100;
+    g.estimate.high = Math.round((g.estimate.high * ratio) / 100) * 100;
+    g.estimate.guests = to;
+  }
+  if (from) {
+    const fix = (t) => typeof t !== 'string' ? t : t
+      .replace(new RegExp(`(Guests:\\s*(?:about|around|roughly)?\\s*)${from}\\b`, 'gi'), `$1${to}`)
+      .replace(new RegExp(`\\b(about|around|roughly|for)\\s+${from}\\b`, 'gi'), `$1 ${to}`)
+      .replace(new RegExp(`\\b${from}(\\s+(?:seated\\s+)?(?:guests|people|friends|attendees|covers))`, 'gi'), `${to}$1`);
+    g.intro = fix(g.intro);
+    g.sections = (g.sections || []).map((s) => ({ ...s, body: fix(s.body), items: (s.items || []).map(fix) }));
+    g.decisions = (g.decisions || []).map((d) => ({ ...d, text: fix(d.text) }));
+    g.next_steps = (g.next_steps || []).map((n) => ({ ...n, text: fix(n.text) }));
+  }
+  g.updated_at = new Date().toISOString();
+  g.update_note = `Updated to ${to} guests`;
+  return g;
 }
 
 // Apply flagged BEO differences to the BEO draft (coordinator-initiated).
@@ -233,7 +258,11 @@ async function handle(req, env, url) {
       if (r.status !== 'open' || r.analysis?.applied_at) return json({ error: 'These changes are already on the BEO' }, 409);
       const e = await store.getEvent(r.event_id);
       const beo = applyToBeo(e.beo, r.analysis?.mismatches);
-      await store.updateEvent(e.id, { beo });
+      const gc = (r.analysis?.mismatches || []).find((m) => m.field === 'Guest count' && /^\d+$/.test(String(m.requested)));
+      const from = Number((String(gc?.current || e.beo?.guest_count || '').match(/\d+/) || [])[0]) || null;
+      const guide = gc && e.guide ? syncGuideGuests(e.guide, from, Number(gc.requested)) : e.guide;
+      await store.updateEvent(e.id, guide !== e.guide ? { beo, guide } : { beo });
+      if (guide !== e.guide) await store.log({ event_id: e.id, actor: 'coordinator', action: `Client guide updated to ${gc.requested} guests to match the BEO` });
       await store.updateRequest(r.id, { status: 'resolved', analysis: { ...(r.analysis || {}), applied_at: new Date().toISOString() } });
       await store.log({ event_id: e.id, actor: 'coordinator', action: `Applied ${r.analysis?.mismatches?.length || 0} change(s) to BEO (revision ${beo.revision})`, detail: null });
       return json({ ok: true, beo });

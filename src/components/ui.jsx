@@ -97,6 +97,7 @@ export function GuideView({ guide, contactName, interactive, onSendSelections })
             <div className="small" style={{ maxWidth: 340 }}>{guide.estimate.note}</div>
           </div>
         )}
+        {guide.update_note && <div className="small" style={{ marginTop: 14, color: '#8EA2B5' }}>{guide.update_note} · {new Date(guide.updated_at).toLocaleDateString()}</div>}
         {guide.approved_at && <div className="small" style={{ marginTop: 14, color: 'var(--ember)', fontFamily: 'var(--mono)', letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 10.5 }}>✓ Reviewed by your coordinator · {new Date(guide.approved_at).toLocaleDateString()}</div>}
       </div>
 

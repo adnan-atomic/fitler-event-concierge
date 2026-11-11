@@ -193,7 +193,7 @@ export default function ClientPortal({ token }) {
                 {data.requests.map((r) => (
                   <div key={r.id} className="check" style={{ display: 'block' }}>
                     <div className="row" style={{ gap: 8 }}><span className="pill">{r.kind === 'change' ? 'Change' : 'Question'}</span><span>{r.body}</span></div>
-                    <div className="small" style={{ marginTop: 6, color: r.answer ? 'var(--good)' : 'var(--muted)' }}>{r.answer ? `Coordinator: ${r.answer}` : r.status === 'open' ? 'With your coordinator' : 'Handled by your coordinator'}</div>
+                    <div className="small" style={{ marginTop: 6, color: r.answer || r.applied ? 'var(--good)' : 'var(--slate)' }}>{r.answer ? `Coordinator: ${r.answer}` : r.applied ? '✓ Updated in your event plan by your coordinator' : r.status === 'open' ? 'With your coordinator' : 'Handled by your coordinator'}</div>
                   </div>
                 ))}
               </div>
