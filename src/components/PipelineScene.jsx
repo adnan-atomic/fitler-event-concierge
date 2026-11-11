@@ -15,9 +15,9 @@ const ROOMS = [
 ];
 
 const STAGE_COLOR = {
-  inquiry: 0xEE8434, replied: 0xEE8434,
-  concierge_sent: 0x7AAED6, intake_complete: 0x7AAED6, in_review: 0x7AAED6,
-  guide_shared: 0x5FC49A,
+  inquiry: 0xFFFFFF, replied: 0xFFFFFF,
+  concierge_sent: 0x8FB4CC, intake_complete: 0x8FB4CC, in_review: 0x8FB4CC,
+  guide_shared: 0x7FD1A4,
 };
 
 function glowTexture() {
@@ -65,7 +65,7 @@ export default function PipelineScene({ events = [] }) {
     const key = new THREE.DirectionalLight(0xffffff, 1.1);
     key.position.set(3, 6, 4);
     scene.add(key);
-    const emberLight = new THREE.PointLight(0xEE8434, 14, 10);
+    const emberLight = new THREE.PointLight(0xB9CCD8, 12, 10);
     emberLight.position.set(-3, 2, 2);
     scene.add(emberLight);
 
@@ -73,13 +73,13 @@ export default function PipelineScene({ events = [] }) {
     scene.add(world);
 
     // Platform with an ember outline and a faint grid.
-    const base = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.12, 3.7), new THREE.MeshStandardMaterial({ color: 0x0F2030, roughness: 0.6, metalness: 0.2 }));
+    const base = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.12, 3.7), new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.6, metalness: 0.2 }));
     base.position.y = -0.06;
     world.add(base);
-    const baseEdge = new THREE.LineSegments(new THREE.EdgesGeometry(base.geometry), new THREE.LineBasicMaterial({ color: 0xEE8434, transparent: true, opacity: 0.55 }));
+    const baseEdge = new THREE.LineSegments(new THREE.EdgesGeometry(base.geometry), new THREE.LineBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.45 }));
     baseEdge.position.copy(base.position);
     world.add(baseEdge);
-    const grid = new THREE.GridHelper(5.2, 26, 0x2C4761, 0x1E3347);
+    const grid = new THREE.GridHelper(5.2, 26, 0x3A3E44, 0x26292E);
     grid.position.y = 0.002;
     grid.scale.z = 3.5 / 5.2;
     world.add(grid);
@@ -88,11 +88,11 @@ export default function PipelineScene({ events = [] }) {
     const rooms = {};
     for (const r of ROOMS) {
       const geo = new THREE.BoxGeometry(r.w - 0.12, r.h, r.d - 0.12);
-      const box = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0x1B4A73, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.55, clearcoat: 0.6 }));
+      const box = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0x0F2A3B, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.55, clearcoat: 0.6 }));
       box.position.set(r.x, r.h / 2, r.z);
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x7AAED6, transparent: true, opacity: 0.75 }));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xCCD1D3, transparent: true, opacity: 0.75 }));
       edges.position.copy(box.position);
-      const roofMat = new THREE.MeshBasicMaterial({ color: 0x7AAED6, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false });
+      const roofMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false });
       const roof = new THREE.Mesh(new THREE.PlaneGeometry(r.w - 0.14, r.d - 0.14), roofMat);
       roof.rotation.x = -Math.PI / 2;
       roof.position.set(r.x, r.h + 0.004, r.z);
@@ -104,7 +104,7 @@ export default function PipelineScene({ events = [] }) {
       label.position.set(r.x, r.h + 0.22, r.z);
       world.add(label);
       // Light beam that flares when an event lands in the room.
-      const beamMat = new THREE.MeshBasicMaterial({ color: 0xEE8434, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const beamMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.22, 1.1, 20, 1, true), beamMat);
       beam.position.set(r.x, r.h + 0.55, r.z);
       world.add(beam);
@@ -118,7 +118,7 @@ export default function PipelineScene({ events = [] }) {
     const ambient = Array.from({ length: Math.max(0, 9 - real.length) }, (_, i) => ({ id: `a${i}`, status: stages[i % 3], space: ROOMS[(i * 2 + 1) % ROOMS.length].id, ambient: true }));
     const list = [...real, ...ambient];
     const orbs = list.map((ev, i) => {
-      const color = new THREE.Color(STAGE_COLOR[ev.status] || 0xEE8434);
+      const color = new THREE.Color(STAGE_COLOR[ev.status] || 0xFFFFFF);
       const core = new THREE.Mesh(new THREE.SphereGeometry(ev.ambient ? 0.05 : 0.075, 16, 16), new THREE.MeshBasicMaterial({ color }));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       halo.scale.setScalar(ev.ambient ? 0.42 : 0.62);
@@ -149,7 +149,7 @@ export default function PipelineScene({ events = [] }) {
     for (let i = 0; i < dustN; i++) dustPos.set([(Math.random() - 0.5) * 8, Math.random() * 3.2, (Math.random() - 0.5) * 6], i * 3);
     const dustGeo = new THREE.BufferGeometry();
     dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.035, color: 0xC3D3E0, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.035, color: 0xCCD1D3, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
     scene.add(dust);
 
     const resize = () => {

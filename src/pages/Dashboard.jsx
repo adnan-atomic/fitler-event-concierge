@@ -77,9 +77,9 @@ export default function Dashboard({ flash }) {
           <p>AI drafts and flags. You review, approve and send. Each orb is an inquiry landing in the space the concierge suggests.</p>
           <button className="btn brass" onClick={() => setModal(true)}>+ New inquiry</button>
           <div className="legend">
-            <span><i style={{ background: '#EE8434' }} />New inquiry</span>
-            <span><i style={{ background: '#7AAED6' }} />With client</span>
-            <span><i style={{ background: '#5FC49A' }} />Guide shared</span>
+            <span><i style={{ background: '#FFFFFF' }} />New inquiry</span>
+            <span><i style={{ background: '#8FB4CC' }} />With client</span>
+            <span><i style={{ background: '#7FD1A4' }} />Guide shared</span>
           </div>
         </div>
         <div className="dash-art">

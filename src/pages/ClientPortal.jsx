@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { intakeQuestions } from '../../shared/intake.js';
 import { KB } from '../../shared/kb.js';
 import { GuideView } from '../components/ui.jsx';
-import { FITLER_LOGO } from '../brand.js';
+import { Mark } from '../components/Mark.jsx';
 
 function FaqPanel({ token }) {
   const [q, setQ] = useState('');
@@ -148,9 +148,9 @@ export default function ClientPortal({ token }) {
 
   const header = (
     <div className="client-top">
-      <img className="logo-fitler" src={FITLER_LOGO} alt="Fitler Club" />
-      <div className="wm">Fitler Club</div>
+      <Mark word />
       <div className="sub">Event Planning Concierge</div>
+      <div className="tag">Every detail handled, so you can enjoy every moment.</div>
     </div>
   );
   if (err) return <div className="client">{header}<div className="client-wrap single"><div className="card"><h2>This link isn't available</h2><p className="muted">Please contact your coordinator for a fresh link.</p></div></div></div>;

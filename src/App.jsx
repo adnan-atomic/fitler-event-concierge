@@ -3,15 +3,13 @@ import { api, getPass, setPass, navigate } from './api.js';
 import Dashboard from './pages/Dashboard.jsx';
 import EventWorkspace from './pages/EventWorkspace.jsx';
 import ClientPortal from './pages/ClientPortal.jsx';
-import { ATOMIC_LOGO, FITLER_LOGO } from './brand.js';
+import { Mark } from './components/Mark.jsx';
 
 export function Brand({ title }) {
   return (
     <span className="brand">
-      <img className="logo-atomic" src={ATOMIC_LOGO} alt="Atomic Computing" />
-      <span className="brand-div" />
-      <img className="logo-fitler" src={FITLER_LOGO} alt="Fitler Club" />
-      {title && <span className="brand-title">{title}</span>}
+      <Mark />
+      {title && <><span className="brand-div" /><span className="brand-title">{title}</span></>}
     </span>
   );
 }
@@ -41,14 +39,14 @@ function Login({ onOk }) {
   return (
     <div className="login">
       <form className="card" onSubmit={submit}>
-        <Brand />
-        <div className="eyebrow">Prototype</div>
-        <h1 style={{ margin: '10px 0 4px', fontSize: 30 }}>Event <em>Concierge</em></h1>
-        <p className="muted" style={{ marginTop: 0 }}>Coordinator console for Fitler Club</p>
+        <Mark word />
+        <div className="eyebrow">Celebrate</div>
+        <h1 style={{ margin: '10px 0 6px', fontSize: 30 }}>Event <em>Concierge</em></h1>
+        <p className="muted" style={{ marginTop: 0 }}>Coordinator console</p>
         <input className="input" type="password" placeholder="Demo passcode" value={v} onChange={(e) => setV(e.target.value)} autoFocus />
         {err && <p className="small" style={{ color: 'var(--bad)' }}>{err}</p>}
         <button className="btn" style={{ marginTop: 14, width: '100%', justifyContent: 'center' }}>Enter</button>
-        <p className="small muted" style={{ marginTop: 16 }}>Built by Atomic Computing · sample data</p>
+        <p className="small muted" style={{ marginTop: 16 }}>Prototype · sample data</p>
       </form>
     </div>
   );
@@ -118,7 +116,7 @@ export default function App() {
       {eventMatch
         ? <EventWorkspace key={eventMatch[1] + reloadKey} id={eventMatch[1]} flash={flash} />
         : <Dashboard key={reloadKey} flash={flash} />}
-      <div className="footer-note">Prototype by Atomic Computing · Sample spaces, menus and pricing · Not connected to Tripleseat</div>
+      <div className="footer-note">Fitler Club · Event Concierge prototype · Sample spaces, menus and pricing · Not connected to Tripleseat</div>
       <Toast msg={toast} />
     </>
   );

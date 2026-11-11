@@ -5,9 +5,9 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-const EMBER = 0xEE8434;
-const STEEL = 0x7AAED6;
-const NAVY = 0x16436B;
+const EMBER = 0xE2B979; // warm candlelight
+const STEEL = 0x8FB4CC;
+const NAVY = 0x0B2536;
 const CREAM = 0xF4EFE6;
 const GOLD = 0xE9B872;
 
