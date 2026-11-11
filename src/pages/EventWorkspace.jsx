@@ -189,6 +189,7 @@ function BriefTab({ e, reload, flash }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [applying, setApplying] = useState(false);
   if (!e.brief) return <div className="card"><h3>No brief yet</h3><p className="muted">The internal brief and BEO draft are produced from the client's concierge answers.</p></div>;
   const b = e.brief;
   const rows = [['Event type', b.event_type], ['Guest count', b.guest_count], ['Date window', b.date_window], ['Space', b.space_preference], ['F&B direction', b.fnb_direction], ['Dietary', b.dietary],
@@ -199,7 +200,9 @@ function BriefTab({ e, reload, flash }) {
     catch (err) { flash(err.message); } finally { setBusy(false); }
   };
   const apply = async () => {
-    try { await api(`/requests/${result.id}/apply`, { method: 'POST' }); flash('BEO updated. Revised order ready to send'); setResult(null); setMsg(''); reload(); } catch (err) { flash(err.message); }
+    if (applying) return;
+    setApplying(true);
+    try { await api(`/requests/${result.id}/apply`, { method: 'POST' }); flash('BEO updated. Revised order ready to send'); setResult(null); setMsg(''); await reload(); } catch (err) { flash(err.message); } finally { setApplying(false); }
   };
   return (
     <div className="grid2" style={{ gridTemplateColumns: '1fr 1.2fr' }}>
@@ -216,7 +219,7 @@ function BriefTab({ e, reload, flash }) {
             <button className="chip" onClick={() => setMsg(SAMPLE_CHANGE_EMAIL)}>Use sample email</button>
             <button className="btn brass sm" disabled={!msg.trim() || busy} onClick={check}>{busy ? <><span className="spinner" /> Checking…</> : 'Check against BEO'}</button>
           </div>
-          {result && <div style={{ marginTop: 14 }}><Mismatches analysis={result.analysis} /><button className="btn sm" style={{ marginTop: 10 }} onClick={apply} disabled={!result.analysis?.mismatches?.length}>Apply to BEO draft</button></div>}
+          {result && <div style={{ marginTop: 14 }}><Mismatches analysis={result.analysis} /><button className="btn sm" style={{ marginTop: 10 }} onClick={apply} disabled={applying || !result.analysis?.mismatches?.length}>{applying ? <><span className="spinner" /> Applying…</> : 'Apply to BEO draft'}</button></div>}
         </div>
       </div>
       <div><BeoView beo={e.beo} changed={e.beo?.revision > 1 ? (e.beo.changed || []) : []} /></div>
@@ -250,12 +253,17 @@ function Mismatches({ analysis }) {
 
 function RequestsTab({ e, requests, reload, flash }) {
   const [answers, setAnswers] = useState({});
+  const [busyId, setBusyId] = useState(null);
   if (!requests.length) return <div className="card"><h3>No client questions or changes yet</h3><p className="muted">Questions the concierge can't answer, change requests from the guide, and checked emails land here.</p></div>;
   const resolve = async (r) => {
     try { await api(`/requests/${r.id}/resolve`, { method: 'POST', body: { answer: answers[r.id] } }); flash(answers[r.id] ? 'Answer sent to the client guide' : 'Resolved'); reload(); }
     catch (err) { flash(err.status === 409 ? 'Answer blocked by guardrails. Rephrase it.' : err.message); }
   };
-  const apply = async (r) => { try { await api(`/requests/${r.id}/apply`, { method: 'POST' }); flash('BEO updated'); reload(); } catch (err) { flash(err.message); } };
+  const apply = async (r) => {
+    if (busyId) return;
+    setBusyId(r.id);
+    try { await api(`/requests/${r.id}/apply`, { method: 'POST' }); flash('BEO updated'); await reload(); } catch (err) { flash(err.message); } finally { setBusyId(null); }
+  };
   return (
     <div className="stack">
       {requests.map((r) => {
@@ -283,7 +291,7 @@ function RequestsTab({ e, requests, reload, flash }) {
                   </>
                 ) : (
                   <div className="row" style={{ justifyContent: 'flex-end' }}>
-                    {r.analysis?.mismatches?.length > 0 && <button className="btn sm" onClick={() => apply(r)}>Apply to BEO draft</button>}
+                    {r.analysis?.mismatches?.length > 0 && <button className="btn sm" disabled={!!busyId} onClick={() => apply(r)}>{busyId === r.id ? <><span className="spinner" /> Applying…</> : 'Apply to BEO draft'}</button>}
                     <button className="btn ghost sm" onClick={() => resolve(r)}>Mark resolved</button>
                   </div>
                 )}

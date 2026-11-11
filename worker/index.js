@@ -55,7 +55,10 @@ function applyToBeo(beo, mismatches = []) {
     } else if (m.field === 'AV') {
       const item = m.requested.replace(/^add\s+(a|an|the)?\s*/i, '');
       next.av = [...new Set([...(next.av || []), item.charAt(0).toUpperCase() + item.slice(1)])];
-    } else if (m.field === 'Room setup') next.setup = m.requested;
+    } else if (m.field === 'Room setup') {
+      if (/rounds|long table|theatre|theater|classroom|cocktail|reception|boardroom|u-shape|banquet|lounge|standing/i.test(m.requested)) next.setup = m.requested;
+      else applied.pop(); // not a concrete layout: leave for the coordinator
+    }
   }
   next.changed = applied;
   next.revision = (next.revision || 1) + 1;
@@ -227,6 +230,7 @@ async function handle(req, env, url) {
     const r = all.find((x) => x.id === parts[2]);
     if (!r) return json({ error: 'Not found' }, 404);
     if (action === 'apply') {
+      if (r.status !== 'open' || r.analysis?.applied_at) return json({ error: 'These changes are already on the BEO' }, 409);
       const e = await store.getEvent(r.event_id);
       const beo = applyToBeo(e.beo, r.analysis?.mismatches);
       await store.updateEvent(e.id, { beo });
