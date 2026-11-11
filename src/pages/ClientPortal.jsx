@@ -186,7 +186,7 @@ export default function ClientPortal({ token }) {
       {data.status === 'guide_shared' && data.guide && (
         <div className="client-wrap">
           <div className="stack">
-            <GuideView guide={data.guide} contactName={data.contact?.name} interactive onSendSelections={sendPicks} />
+            <GuideView guide={data.guide} contactName={data.contact?.name} eventType={data.event_type} interactive onSendSelections={sendPicks} />
             {data.requests.length > 0 && (
               <div className="gsec no-print">
                 <h3>Your questions & requests</h3>

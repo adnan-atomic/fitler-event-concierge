@@ -152,7 +152,7 @@ function GuideTab({ e, reload, flash }) {
         {flags.length > 0 && <input className="input" style={{ marginTop: 8 }} placeholder="To share anyway, note why these flags are acceptable (logged)" value={override} onChange={(ev) => setOverride(ev.target.value)} />}
       </div>
 
-      {mode === 'preview' ? <GuideView guide={g} contactName={e.contact?.name} /> : (
+      {mode === 'preview' ? <GuideView guide={g} contactName={e.contact?.name} eventType={e.event_type} /> : (
         <div className="stack">
           <div className="notice">Every edit is checked live against the client's “never” list. Try typing <i>“Great news, your date is confirmed”</i> into any section.</div>
           <div className="card">

@@ -1,6 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { money, range } from '../../shared/kb.js';
 import { STAGES, stageIndex } from '../api.js';
+
+// The 3D centrepiece (and Three.js) loads only when a guide is shown.
+const Hero3D = lazy(() => import('./Hero3D.jsx'));
+const SCENE_CAPTION = { table: 'Your table, set', disco: "Let's celebrate", rings: 'Two become one' };
+function sceneFor(eventType) {
+  const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('scene');
+  if (['table', 'disco', 'rings'].includes(forced)) return forced;
+  if (eventType === 'wedding' || eventType === 'mitzvah') return 'rings';
+  if (eventType === 'social') return 'disco';
+  return 'table';
+}
 
 export function Actor({ actor }) {
   const label = { ai: 'AI', coordinator: 'CO', client: 'CL', system: 'SY' }[actor] || '?';
@@ -72,7 +83,7 @@ export function BeoView({ beo, changed = [] }) {
   );
 }
 
-export function GuideView({ guide, contactName, interactive, onSendSelections }) {
+export function GuideView({ guide, contactName, interactive, onSendSelections, eventType }) {
   const [checked, setChecked] = useState({});
   const [picked, setPicked] = useState({});
   const [guests, setGuests] = useState(guide?.estimate?.guests || 40);
@@ -87,6 +98,7 @@ export function GuideView({ guide, contactName, interactive, onSendSelections })
   return (
     <div className="stack" style={{ '--gap': '16px' }}>
       <div className="guide-hero">
+        <div className="hero-copy">
         <div className="eyebrow">Your planning guide{contactName ? ` · prepared for ${contactName}` : ''}</div>
         <h1 style={{ margin: '8px 0 10px' }}>{guide.title}</h1>
         <p style={{ margin: 0, maxWidth: 680 }}>{guide.intro}</p>
@@ -99,6 +111,11 @@ export function GuideView({ guide, contactName, interactive, onSendSelections })
         )}
         {guide.update_note && <div className="small" style={{ marginTop: 14, color: '#8EA2B5' }}>{guide.update_note} · {new Date(guide.updated_at).toLocaleDateString()}</div>}
         {guide.approved_at && <div className="small" style={{ marginTop: 14, color: 'var(--ember)', fontFamily: 'var(--mono)', letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 10.5 }}>✓ Reviewed by your coordinator · {new Date(guide.approved_at).toLocaleDateString()}</div>}
+        </div>
+        <div className="hero-art no-print">
+          <Suspense fallback={<div className="hero3d" />}><Hero3D kind={sceneFor(eventType)} /></Suspense>
+          <div className="hero-caption">{SCENE_CAPTION[sceneFor(eventType)]}</div>
+        </div>
       </div>
 
       <div className="grid2">

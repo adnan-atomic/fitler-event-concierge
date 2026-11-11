@@ -235,7 +235,16 @@ dl.kv dd { margin: 0; }
 .progress { height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
 .progress > div { height: 100%; background: var(--ember); transition: width .3s; }
 .faq-panel { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 20px; position: sticky; top: 16px; box-shadow: var(--shadow-sm); }
-.guide-hero { background: var(--hero); color: #EAF1F7; border-radius: 18px; padding: 32px 30px; box-shadow: var(--shadow-md); }
+.guide-hero { background: var(--hero); color: #EAF1F7; border-radius: 18px; padding: 32px 30px; box-shadow: var(--shadow-md); display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: center; overflow: hidden; }
+.hero-art { position: relative; align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+.hero3d { width: 100%; height: 300px; }
+.hero3d canvas { display: block; }
+.hero-caption { text-align: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ember); margin-top: 4px; }
+@media (max-width: 760px) {
+  .guide-hero { grid-template-columns: 1fr; padding: 22px 20px; }
+  .hero-art { order: -1; margin: -10px 0 -4px; }
+  .hero3d { height: 210px; }
+}
 .guide-hero h1 { color: #fff; font-size: 38px; }
 .guide-hero p { color: #C3D3E0 !important; }
 .estimate { margin-top: 20px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, .14); padding-top: 18px; }
