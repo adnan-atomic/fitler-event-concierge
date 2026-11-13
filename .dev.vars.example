@@ -1,6 +1,9 @@
-# Copy to .dev.vars for local development. Never commit real values.
-# Leave any of these empty to run in mock mode (template AI + in-memory data).
-ANTHROPIC_API_KEY=
-SUPABASE_URL=
-SUPABASE_SERVICE_KEY=
-DEMO_PASSCODE=
+# Copy to .dev.vars for local `wrangler dev`. In Cloudflare, add these under
+# Worker → Settings → Variables and Secrets (use "Secret" for the API key).
+MAILGUN_API_KEY=key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MAILGUN_DOMAIN=mg.example.com
+# Optional
+MAILGUN_FROM="Fitler Club Events <events@mg.example.com>"
+MAILGUN_REGION=us
+MAILGUN_REPLY_TO=events@example.com
+MAILGUN_BCC=

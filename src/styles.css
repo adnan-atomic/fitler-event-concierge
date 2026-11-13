@@ -273,3 +273,29 @@ input[type="range"] { accent-color: var(--ember); }
   .dash-art { min-height: 250px; }
   .room-label { font-size: 8.5px; padding: 1px 5px; }
 }
+
+/* ---- PDF export (light, print-style page; applied only to the off-screen copy) ---- */
+html.pdf-mode {
+  --navy: #151515; --paper: #FFFFFF; --mist: #FFFFFF; --ink: #151515;
+  --line: #E3E5E8; --line-strong: #CCD1D3; --slate: #5F646A; --slate-deep: #3A3E44;
+  --steel-a: #F4F5F6; --steel-soft: #EEF3F6; --steel: #2E5A73;
+  --ember: #151515; --ember-deep: #151515; --ember-soft: #EEF0F1; --ember-line: #CCD1D3;
+  --good: #1F7A55; --good-bg: #E4F3EB; --warn: #8A5A00; --warn-bg: #FBF1DC; --bad: #B3372A; --bad-bg: #FBE6E2;
+  --shadow-sm: none; --shadow-md: none; color-scheme: light;
+}
+html.pdf-mode body { background: #fff; color: #151515; }
+.pdf-mode .hero-art, .pdf-mode .no-print, .pdf-mode button, .pdf-mode input[type="range"] { display: none !important; }
+.pdf-mode .guide-hero { background: #fff; color: #151515; border: 1px solid #CCD1D3; grid-template-columns: 1fr; box-shadow: none; }
+.pdf-mode .guide-hero h1, .pdf-mode .estimate .big { color: #151515; }
+.pdf-mode .guide-hero p { color: #3A3E44 !important; }
+.pdf-mode .estimate { border-top-color: #E3E5E8; }
+.pdf-mode .estimate .small { color: #5F646A !important; }
+.pdf-mode .estimate .small:first-child { color: #151515 !important; }
+.pdf-mode .gsec, .pdf-mode .opt { background: #fff; }
+.pdf-mode .gsec ul { list-style: none; padding-left: 0; }
+.pdf-mode .gsec li { position: relative; padding-left: 14px; }
+.pdf-mode .gsec li::before { content: ''; position: absolute; left: 1px; top: .72em; width: 5px; height: 1px; background: #151515; }
+.pdf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; border-bottom: 1px solid #151515; padding-bottom: 12px; margin-bottom: 18px; }
+.pdf-wordmark { width: 170px; height: auto; display: block; }
+.pdf-meta { font-family: var(--body); font-size: 10.5px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; color: #3A3E44; text-align: right; }
+.share-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }

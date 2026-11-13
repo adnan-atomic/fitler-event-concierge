@@ -4,6 +4,7 @@ import { getStore } from './store.js';
 import { triage, generateGuide, checkChange, answerFaq, resolveModel } from './ai.js';
 import { mockTriage } from './mock.js';
 import { checkText, checkGuide } from '../shared/guardrails.js';
+import { mailConfig, parseRecipients, readPdf, sendGuideEmail } from './mail.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -99,12 +100,13 @@ async function handle(req, env, url) {
   const parts = path.split('/').filter(Boolean); // ['api', ...]
 
   if (path === '/api/config') {
-    return json({ needsPasscode: !!env.DEMO_PASSCODE, store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template', model: env.ANTHROPIC_API_KEY ? (env.ANTHROPIC_MODEL || 'auto') : null });
+    return json({ needsPasscode: !!env.DEMO_PASSCODE, store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template', model: env.ANTHROPIC_API_KEY ? (env.ANTHROPIC_MODEL || 'auto') : null, email: mailConfig(env).enabled });
   }
   if (path === '/api/health') {
     // Coordinator-only diagnostics: checks Supabase and Claude connectivity without exposing secrets.
     if (!isCoordinator(req, env)) return json({ error: 'Passcode required' }, 401);
-    const out = { store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template' };
+    const mc = mailConfig(env);
+    const out = { store: store.kind, ai: env.ANTHROPIC_API_KEY ? 'claude' : 'template', email: mc.enabled ? { provider: 'mailgun', domain: mc.domain, region: mc.base.includes('.eu.') ? 'eu' : 'us', from: mc.from, bcc: !!mc.bcc, reply_to: !!mc.replyTo } : 'off' };
     try { out.events = (await store.listEvents()).length; out.store_ok = true; } catch (e) { out.store_ok = false; out.store_error = e.message.slice(0, 200); }
     if (env.ANTHROPIC_API_KEY) {
       try { out.model = await resolveModel(env); out.ai_ok = !!(await faqProbe(env)); } catch (e) { out.ai_ok = false; out.ai_error = e.message.slice(0, 200); }
@@ -120,7 +122,7 @@ async function handle(req, env, url) {
     const e = await store.getEventByToken(parts[2]);
     if (!e) return json({ error: 'Not found' }, 404);
     const action = parts[3];
-    if (!action && method === 'GET') return json(clientView(e, await store.listRequests(e.id)));
+    if (!action && method === 'GET') return json({ ...clientView(e, await store.listRequests(e.id)), email_enabled: mailConfig(env).enabled, contact_email: e.contact?.email || '' });
 
     if (action === 'intake' && method === 'POST') {
       if (e.status !== 'concierge_sent') return json({ error: 'Intake already submitted' }, 409);
@@ -152,6 +154,32 @@ async function handle(req, env, url) {
       await store.insertRequest({ id: uuid(), event_id: e.id, created_at: new Date().toISOString(), kind, source: 'client_portal', body: text, analysis, status: 'open' });
       await store.log({ event_id: e.id, actor: 'client', action: kind === 'change' ? 'Requested a change from the guide' : 'Asked a question in the guide' });
       return json({ ok: true });
+    }
+    if (action === 'email' && method === 'POST') {
+      // Client emails their approved guide (PDF made in the browser) to themselves or colleagues.
+      if (!mailConfig(env).enabled) return json({ error: 'Email is not set up yet. Your coordinator can send the guide instead.' }, 503);
+      if (e.status !== 'guide_shared' || !e.guide) return json({ error: 'The guide is not ready to send yet' }, 409);
+      const { valid, invalid } = parseRecipients(body.to);
+      if (invalid.length) return json({ error: `Please check this address: ${invalid[0]}` }, 400);
+      if (!valid.length) return json({ error: 'Add at least one email address' }, 400);
+      if (valid.length > 3) return json({ error: 'You can send to up to 3 people at a time' }, 400);
+      const hourAgo = Date.now() - 3600e3;
+      const recent = (await store.listActivity(e.id, 100)).filter((a) => a.action?.startsWith('Emailed the planning guide') && new Date(a.created_at).getTime() > hourAgo);
+      if (recent.length >= 5) return json({ error: 'This guide has been emailed several times in the last hour. Please try again later.' }, 429);
+      let pdf;
+      try { pdf = readPdf(body.pdf_base64); } catch (err) { return json({ error: err.message }, err.status || 400); }
+      const slug = String(e.title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'event';
+      try {
+        const sent = await sendGuideEmail(env, {
+          to: valid, senderName: e.contact?.name, eventTitle: e.title,
+          note: String(body.note || '').trim().slice(0, 600), pdf, filename: `fitler-club-${slug}-guide.pdf`,
+        });
+        await store.log({ event_id: e.id, actor: 'client', action: `Emailed the planning guide to ${valid.length === 1 ? valid[0] : `${valid.length} people`}`, detail: { to: valid, mailgun_id: sent.id, bytes: pdf.length } });
+        return json({ ok: true, to: valid });
+      } catch (err) {
+        await store.log({ event_id: e.id, actor: 'system', action: 'Guide email failed', detail: { error: err.message, detail: err.detail } });
+        return json({ error: err.status === 503 ? err.message : `The email could not be sent (${err.message}).` }, err.status || 502);
+      }
     }
     return json({ error: 'Unknown client action' }, 404);
   }

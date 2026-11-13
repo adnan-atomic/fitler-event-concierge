@@ -113,6 +113,54 @@ function Intake({ token, data, onDone }) {
   );
 }
 
+async function makePdf(node, data) {
+  const { buildGuidePdf } = await import('../pdf.js');
+  return buildGuidePdf(node, { title: data.title, contactName: data.contact?.name });
+}
+
+function EmailGuide({ token, data, guideRef, onClose, onSent }) {
+  const [to, setTo] = useState(data.contact_email || '');
+  const [note, setNote] = useState('');
+  const [stage, setStage] = useState('');
+  const [err, setErr] = useState('');
+  const send = async (ev) => {
+    ev.preventDefault();
+    setErr('');
+    try {
+      setStage('Preparing your PDF…');
+      const pdf = await makePdf(guideRef.current, data);
+      const { pdfToBase64 } = await import('../pdf.js');
+      setStage('Sending…');
+      const r = await api(`/c/${token}/email`, { method: 'POST', body: { to, note, pdf_base64: pdfToBase64(pdf) } });
+      onSent(`Guide sent to ${r.to.join(', ')}`);
+      onClose();
+    } catch (e2) { setErr(e2.message || 'The email could not be sent'); setStage(''); }
+  };
+  return (
+    <div className="modal-bg" onClick={stage ? undefined : onClose}>
+      <form className="modal" style={{ width: 'min(520px, 100%)' }} onClick={(e) => e.stopPropagation()} onSubmit={send}>
+        <div className="eyebrow">Share your guide</div>
+        <h2 style={{ margin: '6px 0 6px' }}>Email this guide as a PDF</h2>
+        <p className="muted small" style={{ marginTop: 0 }}>Send it to yourself or to whoever needs to sign off. Up to 3 addresses, separated by commas.</p>
+        <label className="field"><span>To</span>
+          <input className="input" type="text" inputMode="email" autoComplete="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@company.com, colleague@company.com" autoFocus />
+        </label>
+        <label className="field" style={{ marginTop: 12 }}><span>Add a note (optional)</span>
+          <textarea className="input" rows={3} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Here's the plan for the offsite. Can you confirm the budget by Friday?" />
+        </label>
+        {err && <div className="flagbox" style={{ marginTop: 12 }}>{err}</div>}
+        <div className="spread" style={{ marginTop: 16 }}>
+          <span className="small muted">Sent by Fitler Club Events, with the guide attached.</span>
+          <div className="row">
+            <button type="button" className="btn ghost sm" onClick={onClose} disabled={!!stage}>Cancel</button>
+            <button className="btn brass sm" disabled={!!stage || !to.trim()}>{stage ? <><span className="spinner" /> {stage}</> : 'Send email'}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function RequestBox({ token, onSent }) {
   const [kind, setKind] = useState('question');
   const [text, setText] = useState('');
@@ -142,6 +190,9 @@ export default function ClientPortal({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [toast, setToast] = useState('');
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const guideRef = useRef(null);
   const load = () => api(`/c/${token}`).then(setData).catch((e) => setErr(e.message));
   useEffect(() => { load(); document.title = 'Your event · Fitler Club'; }, [token]);
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 2600); load(); };
@@ -158,6 +209,15 @@ export default function ClientPortal({ token }) {
 
   const notYet = ['inquiry', 'replied'].includes(data.status);
   const inReview = data.intake_submitted && data.status !== 'guide_shared';
+  const savePdf = async () => {
+    setSaving(true);
+    try {
+      const pdf = await makePdf(guideRef.current, data);
+      const { pdfFilename } = await import('../pdf.js');
+      pdf.save(pdfFilename(data.title));
+    } catch { window.print(); }
+    setSaving(false);
+  };
   const sendPicks = async (names, guests) => {
     await api(`/c/${token}/request`, { method: 'POST', body: { kind: 'change', body: `I'd like these add-ons priced in my proposal (for about ${guests} guests): ${names.join(', ')}.`, selections: names } });
     flash('Your picks were sent to your coordinator');
@@ -186,7 +246,7 @@ export default function ClientPortal({ token }) {
       {data.status === 'guide_shared' && data.guide && (
         <div className="client-wrap">
           <div className="stack">
-            <GuideView guide={data.guide} contactName={data.contact?.name} eventType={data.event_type} interactive onSendSelections={sendPicks} />
+            <div ref={guideRef}><GuideView guide={data.guide} contactName={data.contact?.name} eventType={data.event_type} interactive onSendSelections={sendPicks} /></div>
             {data.requests.length > 0 && (
               <div className="gsec no-print">
                 <h3>Your questions & requests</h3>
@@ -199,12 +259,16 @@ export default function ClientPortal({ token }) {
               </div>
             )}
             <RequestBox token={token} onSent={flash} />
-            <div className="row no-print" style={{ justifyContent: 'center' }}><button className="btn ghost" onClick={() => window.print()}>Save as PDF to share</button></div>
+            <div className="share-row no-print">
+              <button className="btn ghost" onClick={savePdf} disabled={saving}>{saving ? <><span className="spinner" /> Preparing PDF…</> : 'Save as PDF'}</button>
+              {data.email_enabled && <button className="btn" onClick={() => setEmailOpen(true)}>Email as PDF</button>}
+            </div>
             <p className="small muted" style={{ textAlign: 'center' }}>Indicative information only. Your coordinator confirms dates, pricing and vendors in your proposal and contract.</p>
           </div>
           <FaqPanel token={token} />
         </div>
       )}
+      {emailOpen && <EmailGuide token={token} data={data} guideRef={guideRef} onClose={() => setEmailOpen(false)} onSent={flash} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

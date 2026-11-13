@@ -57,3 +57,20 @@ npm run dev:worker               # builds the app and serves everything on http:
 
 ## Path to production (Vibe-to-Production)
 Replace sample KB with Fitler's spaces, menus, pricing and policies → Tripleseat read integration (24 months of records available) → write-back of BEO drafts → HubSpot lead sync → SSO for staff → deploy into Fitler's AWS environment.
+
+## Emailing the guide (Mailgun)
+
+On the client guide, **Email as PDF** sits beside **Save as PDF**. The browser builds a branded PDF of the guide and the Worker sends it through Mailgun, so no extra service is needed. The button only appears once Mailgun is configured; the coordinator top bar shows **Email: on / off**.
+
+Add these in Cloudflare → Workers → fitler-event-concierge → Settings → Variables and Secrets (for local dev, copy `.dev.vars.example` to `.dev.vars`):
+
+| Name | Required | Example |
+|---|---|---|
+| `MAILGUN_API_KEY` | yes (add as **Secret**) | your Mailgun private API key |
+| `MAILGUN_DOMAIN` | yes | `mg.yourdomain.com` (a verified sending domain) |
+| `MAILGUN_FROM` | no | `Fitler Club Events <events@mg.yourdomain.com>` |
+| `MAILGUN_REGION` | no | `us` (default) or `eu` |
+| `MAILGUN_REPLY_TO` | no | where client replies should go |
+| `MAILGUN_BCC` | no | coordinator copy of every guide sent |
+
+Safeguards: only a shared (coordinator-approved) guide can be sent, up to 3 recipients per send, at most 5 sends per event per hour, PDF only (checked server-side, 9 MB cap). Every send is logged in the event's activity log. Mailgun sandbox domains only deliver to authorised recipients, so use a verified domain for real sends. `/api/health` (coordinator only) reports the email settings without exposing the key.

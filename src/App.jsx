@@ -70,6 +70,11 @@ function TopBar({ config, onReset }) {
             {config.ai === 'claude' ? 'AI: Claude' : 'AI: template mode'}
           </span>
         )}
+        {config && (
+          <span className="pill" title={config.email ? 'Clients can email their guide as a PDF (Mailgun)' : 'Add MAILGUN_API_KEY and MAILGUN_DOMAIN to turn on guide emails'}>
+            <span className={`dot ${config.email ? 'good' : 'neutral'}`} />{config.email ? 'Email: on' : 'Email: off'}
+          </span>
+        )}
         {config && <span className="pill" title="Where data is stored">{config.store === 'supabase' ? 'Supabase' : 'In-memory'}</span>}
         <button className={`link ${arm ? 'armed' : ''}`} onClick={click}>{arm ? 'Click again to reset' : 'Reset demo'}</button>
       </div>
