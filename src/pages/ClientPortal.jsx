@@ -118,46 +118,41 @@ async function makePdf(node, data) {
   return buildGuidePdf(node, { title: data.title, contactName: data.contact?.name });
 }
 
-function EmailGuide({ token, data, guideRef, onClose, onSent }) {
-  const [to, setTo] = useState(data.contact_email || '');
+function EmailGuide({ token, data, guideRef, onSent }) {
+  const [to, setTo] = useState('');
   const [note, setNote] = useState('');
+  const [showNote, setShowNote] = useState(false);
   const [stage, setStage] = useState('');
-  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState(null);
   const send = async (ev) => {
     ev.preventDefault();
-    setErr('');
+    setMsg(null);
     try {
-      setStage('Preparing your PDF…');
+      setStage('Preparing PDF…');
       const pdf = await makePdf(guideRef.current, data);
       const { pdfToBase64 } = await import('../pdf.js');
       setStage('Sending…');
       const r = await api(`/c/${token}/email`, { method: 'POST', body: { to, note, pdf_base64: pdfToBase64(pdf) } });
-      onSent(`Guide sent to ${r.to.join(', ')}`);
-      onClose();
-    } catch (e2) { setErr(e2.message || 'The email could not be sent'); setStage(''); }
+      setMsg({ ok: true, text: `Sent to ${r.to.join(', ')}. It should arrive within a minute.` });
+      setTo(''); setNote(''); setShowNote(false);
+      onSent?.();
+    } catch (e2) { setMsg({ ok: false, text: e2.message || 'The email could not be sent' }); }
+    setStage('');
   };
   return (
-    <div className="modal-bg" onClick={stage ? undefined : onClose}>
-      <form className="modal" style={{ width: 'min(520px, 100%)' }} onClick={(e) => e.stopPropagation()} onSubmit={send}>
-        <div className="eyebrow">Share your guide</div>
-        <h2 style={{ margin: '6px 0 6px' }}>Email this guide as a PDF</h2>
-        <p className="muted small" style={{ marginTop: 0 }}>Send it to yourself or to whoever needs to sign off. Up to 3 addresses, separated by commas.</p>
-        <label className="field"><span>To</span>
-          <input className="input" type="text" inputMode="email" autoComplete="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@company.com, colleague@company.com" autoFocus />
-        </label>
-        <label className="field" style={{ marginTop: 12 }}><span>Add a note (optional)</span>
-          <textarea className="input" rows={3} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Here's the plan for the offsite. Can you confirm the budget by Friday?" />
-        </label>
-        {err && <div className="flagbox" style={{ marginTop: 12 }}>{err}</div>}
-        <div className="spread" style={{ marginTop: 16 }}>
-          <span className="small muted">Sent by Fitler Club Events, with the guide attached.</span>
-          <div className="row">
-            <button type="button" className="btn ghost sm" onClick={onClose} disabled={!!stage}>Cancel</button>
-            <button className="btn brass sm" disabled={!!stage || !to.trim()}>{stage ? <><span className="spinner" /> {stage}</> : 'Send email'}</button>
-          </div>
-        </div>
-      </form>
-    </div>
+    <form className="gsec email-box no-print" onSubmit={send}>
+      <h3>Email this guide</h3>
+      <p className="muted small" style={{ margin: '0 0 12px' }}>We'll send the guide as a PDF to the address you enter. Up to 3 addresses, separated by commas.</p>
+      <div className="email-row">
+        <input className="input" type="text" inputMode="email" autoComplete="email" aria-label="Email address"
+          value={to} onChange={(e) => { setTo(e.target.value); setMsg(null); }} placeholder="Enter email address" disabled={!!stage} />
+        <button className="btn brass" disabled={!!stage || !to.trim()}>{stage ? <><span className="spinner" /> {stage}</> : 'Send PDF'}</button>
+      </div>
+      {showNote
+        ? <textarea className="input" style={{ marginTop: 10 }} rows={2} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a short note (optional)" disabled={!!stage} />
+        : <button type="button" className="linkish small" onClick={() => setShowNote(true)}>+ Add a note</button>}
+      {msg && <div className={msg.ok ? 'okbox' : 'flagbox'} style={{ marginTop: 10 }}>{msg.text}</div>}
+    </form>
   );
 }
 
@@ -190,7 +185,6 @@ export default function ClientPortal({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [toast, setToast] = useState('');
-  const [emailOpen, setEmailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const guideRef = useRef(null);
   const load = () => api(`/c/${token}`).then(setData).catch((e) => setErr(e.message));
@@ -259,16 +253,15 @@ export default function ClientPortal({ token }) {
               </div>
             )}
             <RequestBox token={token} onSent={flash} />
+            {data.email_enabled && <EmailGuide token={token} data={data} guideRef={guideRef} onSent={load} />}
             <div className="share-row no-print">
               <button className="btn ghost" onClick={savePdf} disabled={saving}>{saving ? <><span className="spinner" /> Preparing PDF…</> : 'Save as PDF'}</button>
-              {data.email_enabled && <button className="btn" onClick={() => setEmailOpen(true)}>Email as PDF</button>}
             </div>
             <p className="small muted" style={{ textAlign: 'center' }}>Indicative information only. Your coordinator confirms dates, pricing and vendors in your proposal and contract.</p>
           </div>
           <FaqPanel token={token} />
         </div>
       )}
-      {emailOpen && <EmailGuide token={token} data={data} guideRef={guideRef} onClose={() => setEmailOpen(false)} onSent={flash} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
